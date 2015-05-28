@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Keedio. BankTX</title>
+
+        <link href="css/bootstrap.min.css" rel="stylesheet">
+        <link href="css/bootstrap-theme.min.css" rel="stylesheet">
+        <link href="css/dashboard.css" rel="stylesheet">
+
+        <script src="js/jquery.min.js"></script>
+        <script src="js/d3.min.js"></script>
+        <script src="js/topojson.js"></script>
+        <script src="js/topojson.v1.min.js"></script>
+        <script src="js/datamaps.all.js"></script>
+        <script src="js/bootstrap.min.js"></script>
+
+        <script>
+            "use strict";
+            // Initialize everything when the window finishes loading
+            window.addEventListener("load", function(event) {
+              var status = document.getElementById("status");
+              var url = document.getElementById("url");
+              var open = document.getElementById("open");
+              var close = document.getElementById("close");
+              var send = document.getElementById("send");
+              var text = document.getElementById("text");
+              var message = document.getElementById("message");
+              var socket;
+
+              status.textContent = "Not Connected";
+              url.value = "ws://vm3:8080";
+              close.disabled = true;
+              send.disabled = true;
+
+              // Create a new connection when the Connect button is clicked
+              open.addEventListener("click", function(event) {
+                open.disabled = true;
+                socket = new WebSocket(url.value, "echo-protocol");
+
+                socket.addEventListener("open", function(event) {
+                  close.disabled = false;
+                  send.disabled = false;
+                  status.textContent = "Connected";
+                });
+
+                // Display messages received from the server
+                socket.addEventListener("message", function(event) {
+                  message.textContent = "Server Says: " + event.data;
+                });
+
+                // Display any errors that occur
+                socket.addEventListener("error", function(event) {
+                  message.textContent = "Error: " + event;
+                });
+
+                socket.addEventListener("close", function(event) {
+                  open.disabled = false;
+                  status.textContent = "Not Connected";
+                });
+              });
+
+              // Close the connection when the Disconnect button is clicked
+              close.addEventListener("click", function(event) {
+                close.disabled = true;
+                send.disabled = true;
+                message.textContent = "";
+                socket.close();
+              });
+
+              // Send text to the server when the Send button is clicked
+              send.addEventListener("click", function(event) {
+                socket.send(text.value);
+                text.value = "";
+              });
+            });
+        </script>
+    </head>
+    <body>
+        <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>          
+          <a href="index.html" class="pull-left"><img border="0" width="115px" height="54px" src="img/logo_keedio_blanco_con.png" alt="Keedio"></a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="#">Dashboard</a></li>
+            <li><a href="#">Settings</a></li>
+            <li><a href="#">Profile</a></li>
+            <li><a href="#">Help</a></li>
+          </ul>          
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-sm-3 col-md-2 sidebar">
+          <ul class="nav nav-sidebar">
+            <li><a href="index.html">Index</a></li>
+            <li><a href="examples/d3_map/index.html">Demo1</a></li>
+            <li><a href="websocket.html">Test WebSocket Server</a></li>
+          </ul>
+        </div>
+
+        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+          <h1 class="page-header">Test WebSocket Server</h1>
+
+          <div class="row placeholders">
+            Status: <span id="status"></span><br />
+            URL: <input id="url" /><br />
+            <input id="open" type="button" value="Connect" />&nbsp;
+            <input id="close" type="button" value="Disconnect" /><br />
+            <input id="send" type="button" value="Send" />&nbsp;
+            <input id="text" /><br />
+            <span id="message"></span>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+    </body>
+</html>

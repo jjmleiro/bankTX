@@ -1,0 +1,26 @@
+*.log
+
+# Third party build files
+*.egg-info/
+
+# compiled locales
+*.mo
+
+__MACOSX
+.DS_Store
+
+.project
+.settings
+.classpath
+.sass-cache/
+
+# OS generated files #
+######################
+*/.DS_Store
+.DS_Store
+.DS_Store?
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+sftp-config.json

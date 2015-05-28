@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Keedio. BankTX</title>
+
+        <link href="css/bootstrap.min.css" rel="stylesheet">
+        <link href="css/bootstrap-theme.min.css" rel="stylesheet">
+        <link href="css/dashboard.css" rel="stylesheet">
+        <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+        <style>
+            .country:hover{
+              stroke: #fff;
+              stroke-width: 1.5px;
+            }
+            .text{
+              font-size:10px;
+              text-transform:capitalize;
+            }
+            #mapWorld {
+              border:2px solid #000;
+              border-radius: 5px;
+              height:100%;
+              overflow:hidden;
+              background: #F0F8FF;
+            }
+            .hidden { 
+              display: none; 
+            }
+            div.tooltip {
+              color: #222; 
+              background: #fff; 
+              padding: .5em; 
+              text-shadow: #f5f5f5 0 1px 0;
+              border-radius: 2px; 
+              box-shadow: 0px 0px 2px 0px #a6a6a6; 
+              opacity: 0.9; 
+              position: absolute;
+            }
+            .graticule {
+              fill: none;
+              stroke: #bbb;
+              stroke-width: .5px;
+              stroke-opacity: .5;
+            }
+            .equator {
+              stroke: #ccc;
+              stroke-width: 1px;
+            }
+
+            .txLine {
+              stroke: #FF0000;
+              stroke-width: 4px;
+            }
+
+            .plane {
+              font-family: "FontAwesome";
+              font-size:; 4px;
+            }
+
+        </style>
+
+        <script src="js/jquery.min.js"></script>
+        <script src="js/d3.min.js"></script>
+        <script src="js/topojson.js"></script>
+        <script src="js/topojson.v1.min.js"></script>
+        <script src="js/datamaps.all.js"></script>
+        <script src="js/bootstrap.min.js"></script>
+        <script src="js/queue.v1.min.js"></script>
+
+    </head>
+    <body>
+        <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>          
+          <a href="index.html" class="pull-left"><img border="0" width="115px" height="54px" src="img/logo_keedio_blanco_con.png" alt="Keedio"></a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="#">Dashboard</a></li>
+            <li><a href="#">Settings</a></li>
+            <li><a href="#">Profile</a></li>
+            <li><a href="#">Help</a></li>
+          </ul>          
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-sm-3 col-md-2 sidebar">
+          <ul class="nav nav-sidebar">
+            <li><a href="index.html">Index</a></li>
+            <li><a href="examples/d3_map/index.html">Demo1</a></li>
+            <li><a href="websocket.html">Test WebSocket Server</a></li>
+          </ul>
+        </div>
+
+        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+          <h1 class="page-header">Dashboard</h1>
+
+          <div class="row placeholders">
+            <div class="map" id="mapWorld" ></div>
+                <button id="btnSend" type="button" class="btn btn-primary"> Send </button>
+                <script>
+                    d3.select(window).on("resize", throttle);
+
+                    var zoom = d3.behavior.zoom()
+                        .scaleExtent([1, 9])
+                        .on("zoom", move);
+
+
+                    var width = document.getElementById('mapWorld').offsetWidth;
+                    var height = width / 2;
+
+                    var topo,projection,path,svg,g;
+
+                    var graticule = d3.geo.graticule();
+
+                    var tooltip = d3.select("#mapWorld").append("div").attr("class", "tooltip hidden");
+
+                    setup(width,height);
+
+                    function setup(width,height){
+                      projection = d3.geo.mercator()
+                        .translate([(width/2), (height/2)])
+                        .scale( width / 2 / Math.PI);
+
+                      path = d3.geo.path().projection(projection);
+
+                      svg = d3.select("#mapWorld").append("svg")
+                          .attr("width", width)
+                          .attr("height", height)
+                          .call(zoom)
+                          //.on("click", click)
+                          .append("g");
+
+                      g = svg.append("g")
+                             .on("click", click);
+
+                    }
+
+                    queue()
+                        //.defer(d3.json, "data/world-110m.json")
+                        .defer(d3.json, "data/world-topo-min.json")
+                        .defer(d3.tsv, "data/world-country-names.tsv")
+                        .await(ready);
+
+                    //d3.json("data/world-topo-min.json", function(error, world) {
+                    function ready(error, world) {
+                      var countries = topojson.feature(world, world.objects.countries).features;
+
+                      topo = countries;
+                      draw(topo);
+
+                    };
+                    //});
+
+                    function draw(topo) {
+
+                      svg.append("path")
+                         .datum(graticule)
+                         .attr("class", "graticule")
+                         .attr("d", path);
+
+
+                      g.append("path")
+                       .datum({type: "LineString", coordinates: [[-180, 0], [-90, 0], [0, 0], [90, 0], [180, 0]]})
+                       .attr("class", "equator")
+                       .attr("d", path);
+
+                      
+
+
+                      var country = g.selectAll(".country").data(topo);
+
+                      country.enter().insert("path")
+                          .attr("class", "country")
+                          .attr("d", path)
+                          .attr("id", function(d,i) { return d.id; })
+                          .attr("title", function(d,i) { return d.properties.name; })
+                          .style("fill", function(d, i) { return d.properties.color; });
+
+                      //offsets for tooltips
+                      var offsetL = document.getElementById('mapWorld').offsetLeft+20;
+                      var offsetT = document.getElementById('mapWorld').offsetTop+10;
+
+                      //tooltips
+                      country
+                        .on("mousemove", function(d,i) {
+
+                          var mouse = d3.mouse(svg.node()).map( function(d) { return parseInt(d); } );
+
+                          tooltip.classed("hidden", false)
+                                 .attr("style", "left:"+(mouse[0]+offsetL)+"px;top:"+(mouse[1]+offsetT)+"px")
+                                 .html(d.properties.name);
+
+                          })
+                          .on("mouseout",  function(d,i) {
+                            tooltip.classed("hidden", true);
+                          }); 
+
+
+                      //EXAMPLE: adding some capitals from external CSV file
+                      d3.csv("data/country-capitals.csv", function(err, capitals) {
+
+                        capitals.forEach(function(i){
+                          addpoint(i.CapitalLongitude, i.CapitalLatitude, i.CapitalName );
+                        });
+
+                      });
+
+                    }
+
+
+                    function redraw() {
+                      width = document.getElementById('mapWorld').offsetWidth;
+                      height = width / 2;
+                      d3.select('svg').remove();
+                      setup(width,height);
+                      draw(topo);
+                    }
+
+
+                    function move() {
+
+                      var t = d3.event.translate;
+                      var s = d3.event.scale; 
+                      zscale = s;
+                      var h = height/4;
+
+
+                      t[0] = Math.min(
+                        (width/height)  * (s - 1), 
+                        Math.max( width * (1 - s), t[0] )
+                      );
+
+                      t[1] = Math.min(
+                        h * (s - 1) + h * s, 
+                        Math.max(height  * (1 - s) - h * s, t[1])
+                      );
+
+                      zoom.translate(t);
+                      g.attr("transform", "translate(" + t + ")scale(" + s + ")");
+
+                      //adjust the country hover stroke width based on zoom level
+                      d3.selectAll(".country").style("stroke-width", 1.5 / s);
+
+                    }
+
+
+
+                    var throttleTimer;
+                    function throttle() {
+                      window.clearTimeout(throttleTimer);
+                        throttleTimer = window.setTimeout(function() {
+                          redraw();
+                        }, 200);
+                    }
+
+
+                    //geo translation on mouse click in map
+                    function click() {
+                      var latlon = projection.invert(d3.mouse(this));
+                      console.log(latlon);
+                    }
+
+
+                    //function to add points and text to the map (used in plotting capitals)
+                    function addpoint(lat,lon,text) {
+                      var gpoint = g.append("g").attr("class", "gpoint");
+                      var x = projection([lat,lon])[0];
+                      var y = projection([lat,lon])[1];
+
+                      gpoint.append("svg:circle")
+                            .attr("cx", x)
+                            .attr("cy", y)
+                            .attr("class","point")
+                            .attr("r", 1.5);
+
+                      //conditional in case a point has no associated text
+                      if(text.length>0){
+
+                        gpoint.append("text")
+                              .attr("x", x+2)
+                              .attr("y", y+2)
+                              .attr("class","text")
+                              .text(text);
+                      }
+
+                    }
+
+
+
+
+
+function complex(lonlat1, lonlat2) {
+                var pointa = projection(lonlat1);
+                var pointb = projection(lonlat2);
+                exploit(pointa,1,0);
+                ray(lonlat1, lonlat2, pointa, pointb, 1, 1);
+                exploit(pointb,1,2);
+
+            };
+
+            function exploit(point, duration, delay)  {
+                for (var i=0;i<30;i++) {
+
+                    g
+                        .append("text")
+                        .attr("x",point[0])
+                        .attr("font-family", "FontAwesome")
+                        .attr("class", "txLine")
+                        .attr("y",point[1])
+                        .style({
+                                stroke: '#ff0000',
+                                'stroke-width': '1px'
+                            })
+                        .attr("color", function() {
+                            return "hsl(" + Math.random() * 360 + ",30%,60%)";
+                        })
+                        .attr("font-size", "2px")
+                        .text(function(d) { return '\uf069'; })
+                        .transition()                        
+                        .attr("x",function() {
+                            var num = Math.floor(Math.random() * 10);
+                            num *= Math.floor(Math.random()*2) == 1 ? 1 : -1;
+                            return point[0] + num; 
+                        })
+                        .attr("y",function() {
+                            var num = Math.floor(Math.random() * 10);
+                            num *= Math.floor(Math.random()*2) == 1 ? 1 : -1; 
+                            return point[1] + num;
+                        })                        
+                        .duration(duration*1000)
+                        .delay(delay*1000)
+                        .remove();
+                }
+                
+            };
+
+            // --- Helper functions (for tweening the path)
+            var lineTransition = function lineTransition(path) {
+                path.transition()
+                    //NOTE: Change this number (in ms) to make lines draw faster or slower
+                    .duration(1000)
+                    .delay(1000)
+                    .attrTween("stroke-dasharray", tweenDash)
+                    .each("end", function(d,i) { 
+                        ////Uncomment following line to re-transition
+                        //d3.select(this).call(transition); 
+                        
+                        //We might want to do stuff when the line reaches the target,
+                        //  like start the pulsating or add a new point or tell the
+                        //  NSA to listen to this guy's phone calls
+                        //doStuffWhenLineFinishes(d,i);
+                    })
+                    .remove()
+            };
+
+            var tweenDash = function tweenDash() {
+                //This function is used to animate the dash-array property, which is a
+                //  nice hack that gives us animation along some arbitrary path (in this
+                //  case, makes it look like a line is being drawn from point A to B)
+                var len = this.getTotalLength(),
+                    interpolate = d3.interpolateString("0," + len, len + "," + len);
+
+                return function(t) { return interpolate(t); };
+            };
+
+            function returnLine(pointa,pointb) {
+              return [
+                {
+                    type: "LineString",
+                    coordinates: [
+                        [ pointa[0], pointa[1] ],
+                        [ pointb[0], pointb[1] ]
+                    ]
+                }
+
+              ]
+            };
+
+            function ray(lonlat1, lonlat2, pointa, pointb, duration, delay) {
+                        var prueba2 = g.append("g")
+                        var pathArcs = prueba2.selectAll(".arc")
+                                              .data(returnLine(lonlat1, lonlat2));
+
+                        pathArcs.enter()
+                                .append("path").attr({
+                                    'class': 'arc'
+                                }).style({ 
+                                    fill: 'none',
+                                });
+
+                        pathArcs.attr({
+                                //d is the points attribute for this path, we'll draw
+                                //  an arc between the points using the arc function
+                                d: path
+                            })
+                            .style({
+                                stroke: '#ff0000',
+                                'stroke-width': '1px'
+                            })
+                            // Uncomment this line to remove the transition
+                            .call(lineTransition);
+
+                        //exit
+                        pathArcs.exit().remove();
+
+                        /*
+                        var line = g.append("text")
+                            .attr("x", pointa[0])
+                            .attr("y", pointa[1])                            
+                            .attr("class", "plane")
+                            .text(function(d) { return '\uf072'; });
+                        
+                        line.transition()
+                            .attr("x",pointb[0])
+                            .attr("y",pointb[1])
+                            .duration(1000)
+                            .duration(duration*1000)
+                            .delay(delay*1000)
+                            .remove()
+                        */
+
+            };
+
+            $(document).ready(function () {
+                //Datos iniciales. Longitud - Latitud.
+                //Formato. (longitud1, latitud1, longitud2, latitud2)
+
+                var aTx = {};                
+                aTx = { tx: 'Tx1',
+                        position: [-9.133333, 38.71666666666667,-47.916667,-15.783333333333333]
+                      };          
+                var sTx = ["-9.133333,38.71666666666667,-47.916667,-15.783333333333333",
+                           "2.333333,48.86666666666667,-77.000000,38.883333",
+                           "-99.133333,19.433333333333334,31.250000,30.05",
+                           "9.133333,38.71666666666667,-3.7,40"
+                          ];
+
+                var webSocket = new WebSocket("ws://vm3:8080/","echo-protocol");
+
+                webSocket.onopen = function() {                    
+                  for (var i=0; i<sTx.length; i++) {
+                    webSocket.send(sTx[i]);  
+                  };          
+                };
+
+                webSocket.onmessage = function(evt) {
+                    if (!evt) {
+                        return;
+                    }
+                    
+                    var lonlat1 = [];
+                    var lonlat2 = [];           
+                         
+                    var aReceived = evt.data.split(",");
+                    
+                    lonlat1 = [aReceived[0], aReceived[1]];
+                    lonlat2 = [aReceived[2], aReceived[3]];
+                        
+                    complex(lonlat1,lonlat2);
+                };
+
+                btnSend.addEventListener("click", function(event) {
+                    for (var i=0; i<sTx.length; i++) {
+                      webSocket.send(sTx[i]);  
+                    };
+                });
+            });
+
+
+
+            </script>  
+          </div>
+          
+        </div>
+      </div>
+    </div>
+    </body>
+</html>
