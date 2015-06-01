@@ -84,7 +84,7 @@
         </div>
         <div id="navbar" class="navbar-collapse collapse">
           <ul class="nav navbar-nav navbar-right">
-            <li><a href="#">Dashboard</a></li>
+            <li><a href="index.html">Dashboard</a></li>
             <li><a href="#">Settings</a></li>
             <li><a href="#">Profile</a></li>
             <li><a href="#">Help</a></li>
@@ -98,6 +98,7 @@
         <div class="col-sm-3 col-md-2 sidebar">
           <ul class="nav nav-sidebar">
             <li><a href="index.html">Index</a></li>
+            <li><a href="demo1.html">Demo1</a></li>
             <li><a href="websocket.html">Test WebSocket Server</a></li>
           </ul>
         </div>
@@ -149,6 +150,7 @@
                     queue()
                         //.defer(d3.json, "data/world-110m.json")
                         .defer(d3.json, "data/world-topo-min.json")
+                        //.defer(d3.json, "data/world-countries.json")
                         .defer(d3.tsv, "data/world-country-names.tsv")
                         .await(ready);
 
@@ -446,7 +448,7 @@ function complex(lonlat1, lonlat2) {
                            "9.133333,38.71666666666667,-3.7,40"
                           ];
 
-                var webSocket = new WebSocket("ws://vm3:8080/","echo-protocol");
+                var webSocket = new WebSocket("ws://BuildoopHUE:8080/","echo-protocol");
 
                 webSocket.onopen = function() {                    
                   for (var i=0; i<sTx.length; i++) {
